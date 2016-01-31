@@ -35,14 +35,15 @@ class LISTA(Layer):
         self.S = self.add_param(S, (dict_size, dict_size), name='S',
                                 lista=True, role='bias', regularizable=True)
         self.theta = self.add_param(theta, (dict_size,), name='theta',
-                                    lista=True, role='bias', regularizable=False)
+                                    lista=True, role='bias', regularizable=False, is_theta=True)
         self.T = depth
 
     def get_output_for(self, input, **kwargs):
+        eps=1e-6
         B = T.dot(input, self.W)
-        output = shrinkage(B, self.theta)
+        output = shrinkage(B, self.theta + eps)
         for _ in range(0, self.T):
-            output = shrinkage(T.dot(output, self.S) + B, self.theta)
+            output = shrinkage(T.dot(output, self.S) + B, self.theta + eps)
         return output
 
     def get_output_shape_for(self, input_shape):
@@ -73,7 +74,7 @@ def LISTALinear(incoming, dict_size, depth, output_size,
     network = dropout(network, p=p_drop, name='PROJ_DROP_' + str(stack_index))
     return network
 
-def LISTALinearStack(incoming, dimensions, p_weight=0.5):
+def LISTALinearStack(incoming, dimensions, p_weight=0.5, **kwargs):
     '''
     implementation of stacked LISTA layers
     :param incoming: input to the first LISTA layer
@@ -90,8 +91,8 @@ def LISTALinearStack(incoming, dimensions, p_weight=0.5):
             features = network
         else:
             network = LISTALinear(network,
-                                  dimensions[stack_idx][0],
-                                  dimensions[stack_idx][1],
-                                  dimensions[stack_idx][2],
+                                  dict_size=dimensions[stack_idx][0],
+                                  depth=dimensions[stack_idx][1],
+                                  output_size=dimensions[stack_idx][2],
                                   stack_index=stack_idx)
     return network, classification_branch, features

@@ -1,7 +1,9 @@
-import cPickle as pickle
 import time
 import numpy as np
 import theano
+import matplotlib.pyplot as plt
+import params_io as io
+import cPickle as pickle
 from lasagne import updates, layers, objectives, regularization
 from theano import tensor as T
 from build_cg import build_computation_graph
@@ -27,6 +29,8 @@ def remove_duplicate(list):
     [out.append(elem) for elem in list if elem not in out]
     return out
 
+#-----------------------PARAMETERS----------------------------#
+
 with open('labeled_index.pkl', 'r') as f:
     loaded_obj = pickle.load(f)
 VALIDATION_SIZE = loaded_obj[0]
@@ -39,12 +43,19 @@ _, _, _, lbY, _ , _ = mnist(onehot=False)
 
 print('Building computation graph')
 
+IM_SIZE = trX.shape[1]
+# dimensions = ((1500, 3, 500), (1000, 3, 100),
+#               -1,
+#               (1000, 3, 500), (1500, 3, IM_SIZE))
+dimensions = ((1500, 3, 100),
+              -1,
+              (1500, 3, IM_SIZE))
 input_var = T.fmatrix('input_var')
 target_var = T.fmatrix('target_var')
 labeled_var = T.fmatrix('labeled_var')
-unsupervised_graph, supervised_graph, features = build_computation_graph(input_var)
+unsupervised_graph, supervised_graph, features = build_computation_graph(input_var, dimensions)
 
-lr = (1.0, 1.0, 0)
+lr = (1.0, 1, 1e-2)
 
 reconstruction = layers.get_output(unsupervised_graph)
 prediction = layers.get_output(supervised_graph)
@@ -52,79 +63,118 @@ params = layers.get_all_params(unsupervised_graph, trainable=True) + \
          layers.get_all_params(supervised_graph, trainable=True)
 params = remove_duplicate(params)
 
-loss1 = objectives.squared_error(reconstruction, input_var).mean()
-loss2 = (objectives.squared_error(prediction, target_var) * labeled_var).mean()
 regularization_params = layers.get_all_params(unsupervised_graph, regularizable=True) + \
          layers.get_all_params(supervised_graph, regularizable=True)
 regularization_params = remove_duplicate(regularization_params)
-l2_penalties = regularization.apply_penalty(params, regularization.l2)
-loss = loss1*lr[0] + loss2*lr[1] + l2_penalties*lr[2]
+regularization_params = [regularization_params.pop()]
+
+loss1 = objectives.squared_error(reconstruction, input_var)
+loss2 = objectives.squared_error(prediction, target_var)
+l2_penalties = regularization.apply_penalty(regularization_params, regularization.l2)
+loss = lr[0]*loss1.mean() +\
+       lr[1]*(loss2*repeat_col(labeled_var, 10)).mean() +\
+       lr[2]*l2_penalties.mean()
 
 updates = updates.adam(loss,params,0.00001)
+test_reconstruction = layers.get_output(unsupervised_graph, deterministic=True)
 test_prediction = layers.get_output(supervised_graph, deterministic=True)
-test_loss = objectives.categorical_crossentropy(test_prediction, target_var)
-test_loss = test_loss.mean()
+test_loss1 = objectives.squared_error(test_reconstruction, input_var)
+test_loss2 = objectives.squared_error(test_prediction, target_var)
+test_loss = lr[0]*test_loss1.mean() +\
+            lr[1]*test_loss2.mean() +\
+            lr[2]*l2_penalties.mean()
 test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), T.argmax(target_var, axis=1)),
                   dtype=theano.config.floatX)
 
 train_fn = theano.function([input_var, target_var, labeled_var], loss, updates=updates, allow_input_downcast=True,
                            on_unused_input='ignore')
 # Compile a second function computing the validation loss and accuracy:
-val_fn = theano.function([input_var, target_var, labeled_var], [loss2*lr[1], test_acc], allow_input_downcast=True)
+#val_fn = theano.function([input_var, target_var, labeled_var], [loss2*lr[1], test_acc], allow_input_downcast=True)
+val_fn = theano.function([input_var, target_var, labeled_var],
+                         [test_loss,
+                          lr[0]*test_loss1.mean(),
+                          lr[1]*test_loss2.mean(),
+                          lr[2]*l2_penalties.mean(),
+                          test_acc], allow_input_downcast=True,
+                         on_unused_input='ignore')
 
 print 'Training...'
-num_epochs=500
+num_epochs=3000
+train_loss = []
+train_loss1 = []
+train_loss2 = []
+train_regularize = []
 for epoch in range(num_epochs):
-        start_time = time.time()
-        for batch in iterate_minibatches(trX, trY, repeat_col(labeled_idx, 10), 500, shuffle=True):
-            inputs, targets, labeled= batch
-            train_err = train_fn(inputs, targets, labeled)
+    start_time = time.time()
+    for batch in iterate_minibatches(trX, trY, labeled_idx, 500, shuffle=True):
+        inputs, targets, labeled= batch
+        train_err = train_fn(inputs, targets, labeled)
 
-        train_err = 0
-        train_acc = 0
-        train_batches = 0
-        for batch in iterate_minibatches(trX, trY, repeat_col(labeled_idx, 10), 500, shuffle=True):
-            inputs, targets, labeled = batch
-            err, acc = val_fn(inputs, targets, labeled)
-            train_err += err
-            train_acc += acc
-            train_batches += 1
+    train_err = 0
+    train_acc = 0
+    train_batches = 0
+    train_loss.append(0)
+    train_loss1.append(0)
+    train_loss2.append(0)
+    train_regularize.append(0)
+    for batch in iterate_minibatches(trX, trY, labeled_idx, 500, shuffle=True):
+        inputs, targets, labeled = batch
+        err, _loss1, _loss2, _regularize, acc = val_fn(inputs, targets, labeled)
+        train_loss[-1] += err
+        train_loss1[-1] += _loss1
+        train_loss2[-1] += _loss2
+        train_regularize[-1] += _regularize
+        train_err += err
+        train_acc += acc
+        train_batches += 1
+    train_loss[-1] /= train_batches
+    train_loss1[-1] /= train_batches
+    train_loss2[-1] /= train_batches
+    train_regularize[-1] /= train_batches
 
-        # And a full pass over the validation data:
-        val_err = 0
-        val_acc = 0
-        val_batches = 0
-        for batch in iterate_minibatches(vlX, vlY,
-                                         repeat_col(np.asarray(range(vlY.shape[0])).reshape(vlY.shape[0], 1), 10),
-                                         500, shuffle=False):
-            inputs, targets, labeled = batch
-            err, acc = val_fn(inputs, targets, labeled)
-            val_err += err
-            val_acc += acc
-            val_batches += 1
+    # And a full pass over the validation data:
+    val_err = 0
+    val_acc = 0
+    val_batches = 0
+    for batch in iterate_minibatches(vlX, vlY,
+                                     np.zeros((vlY.shape[0], 1)),
+                                     500, shuffle=False):
+        inputs, targets, labeled = batch
+        err, _, _, _, acc = val_fn(inputs, targets, labeled)
+        val_err += err
+        val_acc += acc
+        val_batches += 1
 
-        # Then we print the results for this epoch:
-        print("Epoch {} of {} took {:.3f}s".format(
-            epoch + 1, num_epochs, time.time() - start_time))
-        print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-        print("  training accuracy:\t\t{:.6f}".format(train_acc / train_batches))
-        print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
-        print("  validation accuracy:\t\t{:.2f} %".format(
-            val_acc / val_batches * 100))
+    # Then we print the results for this epoch:
+    print("Epoch {} of {} took {:.3f}s".format(
+        epoch + 1, num_epochs, time.time() - start_time))
+    print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+    print("  training accuracy:\t\t{:.6f} %".format(
+        train_acc / train_batches * 100))
+    print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+    print("  validation accuracy:\t\t{:.2f} %".format(
+        val_acc / val_batches * 100))
 
-        # After training, we compute and print the test error:
-        test_err = 0
-        test_acc = 0
-        test_batches = 0
-        for batch in iterate_minibatches(teX, teY,
-                                         repeat_col(np.asarray(range(teY.shape[0])).reshape(teY.shape[0], 1), 10),
-                                         500, shuffle=False):
-            inputs, targets, _ = batch
-            err, acc = val_fn(inputs, targets, labeled)
-            test_err += err
-            test_acc += acc
-            test_batches += 1
-        #print("Final results:")
-        print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
-        print("  test accuracy:\t\t{:.2f} %".format(
-            test_acc / test_batches * 100))
+    # After training, we compute and print the test error:
+    test_err = 0
+    test_acc = 0
+    test_batches = 0
+    for batch in iterate_minibatches(teX, teY,
+                                     np.zeros((teY.shape[0], 1)),
+                                     500, shuffle=False):
+        inputs, targets, _ = batch
+        err, _, _, _, acc = val_fn(inputs, targets, labeled)
+        test_err += err
+        test_acc += acc
+        test_batches += 1
+    #print("Final results:")
+    print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
+    print("  test accuracy:\t\t{:.2f} %".format(
+        test_acc / test_batches * 100))
+
+plt.clf()
+plt.plot(train_loss,'r-')
+plt.plot(train_loss1,'g--')
+plt.plot(train_loss2,'b--')
+plt.plot(train_regularize,'k--')
+plt.show()

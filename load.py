@@ -11,7 +11,7 @@ def one_hot(x,n):
 	o_h[np.arange(len(x)),x] = 1
 	return o_h
 
-def mnist(ntrain=60000,ntest=10000,onehot=True, ndim=2):
+def mnist(ntrain=50000, nvalid=10000, ntest=10000,onehot=True, ndim=2):
 	f = open('mnist.pkl')
 	loaded_objs = pickle.load(f)
 	trX = np.asarray(loaded_objs[0][0])
@@ -36,4 +36,4 @@ def mnist(ntrain=60000,ntest=10000,onehot=True, ndim=2):
 		# 	teY = np.reshape(teY, (teY.shape[0], 1, teY.shape[1]))
 
 
-	return trX, vlX, teX, trY, vlY, teY
+	return trX[0:ntrain], vlX[0:nvalid], teX[0:ntest], trY[0:ntrain], vlY[0:nvalid], teY[0:ntest]
