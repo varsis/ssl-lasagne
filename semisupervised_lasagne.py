@@ -4,7 +4,7 @@ import theano
 import matplotlib.pyplot as plt
 import params_io as io
 import cPickle as pickle
-from lasagne import updates, layers, objectives, regularization
+from lasagne import updates, layers, objectives, regularization, utils
 from theano import tensor as T
 from build_cg import build_computation_graph
 from load import mnist
@@ -24,11 +24,6 @@ def iterate_minibatches(inputs, targets, labeled, batchsize, shuffle=False):
 def repeat_col(col, n_col):
     return np.repeat(col, n_col, axis=1)
 
-def remove_duplicate(list):
-    out = []
-    [out.append(elem) for elem in list if elem not in out]
-    return out
-
 #-----------------------PARAMETERS----------------------------#
 
 with open('labeled_index.pkl', 'r') as f:
@@ -44,16 +39,18 @@ _, _, _, lbY, _ , _ = mnist(onehot=False)
 print('Building computation graph')
 
 IM_SIZE = trX.shape[1]
-# dimensions = ((1500, 3, 500), (1000, 3, 100),
+# # dimensions = ((1500, 3, 500), (1000, 3, 100),
+# #               -1,
+# #               (1000, 3, 500), (1500, 3, IM_SIZE))
+# dimensions = ((1500, 3, 100),
 #               -1,
-#               (1000, 3, 500), (1500, 3, IM_SIZE))
-dimensions = ((1500, 3, 100),
-              -1,
-              (1500, 3, IM_SIZE))
+#               (1500, 3, IM_SIZE))
+dimensions = [[1500, 3, 100]]
+input_shape = [None, IM_SIZE]
 input_var = T.fmatrix('input_var')
 target_var = T.fmatrix('target_var')
 labeled_var = T.fmatrix('labeled_var')
-unsupervised_graph, supervised_graph, features = build_computation_graph(input_var, dimensions)
+unsupervised_graph, supervised_graph, features = build_computation_graph(input_var, input_shape, dimensions)
 
 lr = (1.0, 1, 1e-2)
 
@@ -61,11 +58,11 @@ reconstruction = layers.get_output(unsupervised_graph)
 prediction = layers.get_output(supervised_graph)
 params = layers.get_all_params(unsupervised_graph, trainable=True) + \
          layers.get_all_params(supervised_graph, trainable=True)
-params = remove_duplicate(params)
+params = utils.unique(params)
 
 regularization_params = layers.get_all_params(unsupervised_graph, regularizable=True) + \
          layers.get_all_params(supervised_graph, regularizable=True)
-regularization_params = remove_duplicate(regularization_params)
+regularization_params = utils.unique(regularization_params)
 regularization_params = [regularization_params.pop()]
 
 loss1 = objectives.squared_error(reconstruction, input_var)
@@ -174,7 +171,7 @@ for epoch in range(num_epochs):
 
 plt.clf()
 plt.plot(train_loss,'r-')
-plt.plot(train_loss1,'g--')
-plt.plot(train_loss2,'b--')
-plt.plot(train_regularize,'k--')
+plt.plot(train_loss1,'g-')
+plt.plot(train_loss2,'b-')
+plt.plot(train_regularize,'k-')
 plt.show()
