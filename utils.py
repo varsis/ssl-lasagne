@@ -1,9 +1,8 @@
-import theano.tensor as T
 import numpy as np
+import theano.tensor as T
 from lasagne.init import GlorotUniform, Constant, Normal
 from lasagne.layers import Layer, dropout, DenseLayer
 from lasagne.nonlinearities import identity, rectify, softmax
-from sparse import SparseAlgorithm
 
 
 class TransposedDenseLayer(Layer):
@@ -49,7 +48,7 @@ class LinearCombinationLayer(Layer):
         self.alpha = alpha
 
 
-def NecklaceNetwork(incoming, dimensions, LayerClass=SparseAlgorithm, p_weight=0.5, alpha=0.5):
+def NecklaceNetwork(incoming, dimensions, LayerClass, p_weight=0.5, alpha=0.5):
     '''
     Implementation of a necklace network. See: https://drive.google.com/file/d/0B8EOfHp2L5mNbkY1UkhlWmF2YWc/view?ts=56b3a4fc
     :param dimensions: contain information of the dimension
@@ -72,9 +71,10 @@ def NecklaceNetwork(incoming, dimensions, LayerClass=SparseAlgorithm, p_weight=0
         params_init=[GlorotUniform(0.01),
              GlorotUniform(0.01),
              Normal(0.0005, mean=0.001)]
-        network = LayerClass(incoming, sparse_dimensions, params_init, transposed=False, name='LISTA_' + stack_str)
+        network = LayerClass(incoming, sparse_dimensions, params_init, [False, 0.5, 0.5], name='LISTA_' + stack_str)
         D_list.append(network.get_dictionary_param())
-        network = dropout(network, p_weight, name='LISTA_DROP_' + stack_str)
+        if not isinstance(network, dropout):
+            network = dropout(network, p_weight, name='LISTA_DROP_' + stack_str)
         network = DenseLayer(network, num_units=output_size, b=None, nonlinearity=identity, name='PROJ_' + stack_str)
         G_list.append(network.W)
         network = dropout(network, p=p_weight, name='PROJ_DROP_' + stack_str)
@@ -88,8 +88,9 @@ def NecklaceNetwork(incoming, dimensions, LayerClass=SparseAlgorithm, p_weight=0
         params_init = [G_list[_],
                        GlorotUniform(0.01),
                        Normal(0.0005, mean=0.001)]
-        network = LayerClass(network, sparse_dimensions, params_init, transposed=True, name='LISTA_' + stack_str)
-        network = dropout(network, p_weight, name='LISTA_DROP_' + stack_str)
+        network = LayerClass(network, sparse_dimensions, params_init, [True, 0.5, 0.5], name='LISTA_' + stack_str)
+        if not isinstance(network, dropout):
+            network = dropout(network, p_weight, name='LISTA_DROP_' + stack_str)
         network = TransposedDenseLayer(network, num_units=output_size, W=D_list[_], b=None, nonlinearity=identity, name='PROJ_' + stack_str)
         network = dropout(network, p=p_weight, name='PROJ_DROP_' + stack_str)
     return network, classification_branch, feature

@@ -22,23 +22,21 @@ class SparseAlgorithm:
 
 
 class ShrinkageLayer(Layer):
-    def __init__(self, incoming, dimension, params_init=(GlorotUniform(0.01),
+    def __init__(self, incoming, dict_size, params_init=(GlorotUniform(0.01),
+                                                         None,
                                                          Normal(0.0005, mean=0.001)),
-                 p_dropout=0.5, **kwargs):
+                 **kwargs):
         super(ShrinkageLayer, self).__init__(incoming, **kwargs)
-        self.dict_size = dimension[0]
-        self.T = dimension[1]
+        self.dict_size = dict_size
         self.S = self.add_param(params_init[0], [self.dict_size, self.dict_size], name='S',
                                 lista=True, lista_weight_W=True, regularizable=True)
-        self.theta = self.add_param(params_init[0], [self.dict_size, ], name='theta',
+        self.B = params_init[1]
+        self.theta = self.add_param(params_init[2], [self.dict_size, ], name='theta',
                                     lista=True, lista_fun_param=True, regularizable=False)
-        self.p_dropout = p_dropout
 
     def get_output_for(self, input, **kwargs):
         eps = 1e-6
-        output = shrinkage(input, self.theta + eps)
-        for _ in range(self.T):
-            output = shrinkage(T.dot(output, self.S) + input, self.theta + eps)
+        output = shrinkage(T.dot(input, self.S) + self.B.get_output_for(input, **kwargs), self.theta + eps)
         return output
 
     def get_output_shape_for(self, input_shape):
@@ -49,7 +47,7 @@ class LISTAWithDropout(Layer, SparseAlgorithm):
     def __init__(self, incoming, dimension, params_init=(GlorotUniform(0.01),
                                                          GlorotUniform(0.01),
                                                          Normal(0.0005, mean=0.001)),
-                 p_dropout=0.5, transposed=False, **kwargs):
+                 addition_parameters=[False, None, None], **kwargs):
         '''
         init parameters
         :param incoming: input to the LISTA layer
@@ -71,10 +69,22 @@ class LISTAWithDropout(Layer, SparseAlgorithm):
                                 lista=True, lista_weight_W=True, regularizable=True)
         self.theta = self.add_param(params_init[2], [self.dict_size, ], name='theta',
                                     lista=True, lista_fun_param=True, regularizable=False)
-        self.p_dropout = p_dropout
-        self.transposed = transposed
-        self.input_to_shrinkage = None
-        self.output_layer = None
+        self.transposed = addition_parameters[0]
+        self.p_drop_input_to_shrinkage = addition_parameters[1]
+        self.p_drop_shrinkage = addition_parameters[2]
+        self.input_to_shrinkage = (DenseLayer(incoming, num_units=self.dict_size, W=self.W, b=None,
+                                              nonlinearity=identity)
+                                   if not self.transposed else
+                                   TransposedDenseLayer(incoming, num_units=self.dict_size, W=self.W, b=None,
+                                                        nonlinearity=identity))
+        if self.p_drop_input_to_shrinkage is not None:
+            self.input_to_shrinkage = dropout(self.input_to_shrinkage, self.p_drop_input_to_shrinkage)
+        self.output_layer = self.input_to_shrinkage
+        for _ in range(self.T):
+            self.output_layer = ShrinkageLayer(self.output_layer, self.dict_size,
+                                               [self.S, self.input_to_shrinkage, self.theta])
+            if self.p_drop_shrinkage is not None and _ is not self.T - 1:
+                self.output_layer = dropout(self.output_layer, self.p_drop_shrinkage)
 
     def get_dictionary_param(self):
         return self.W
@@ -83,16 +93,6 @@ class LISTAWithDropout(Layer, SparseAlgorithm):
         return T.transpose(self.W) if not self.transposed else self.W
 
     def get_output_for(self, input, **kwargs):
-        if self.input_to_shrinkage is None:
-            self.input_to_shrinkage = (DenseLayer(input, num_units=self.dict_size, W=self.W, b=None,
-                                                  nonlinearity=identity)
-                                       if not self.transposed else
-                                       TransposedDenseLayer(input, num_units=self.dict_size, W=self.W, b=None,
-                                                            nonlinearity=identity))
-            self.input_to_shrinkage = dropout(self.input_to_shrinkage, self.p_dropout)
-        if self.output_layer is None:
-            self.output_layer = ShrinkageLayer(self.input_to_shrinkage, [self.dict_size, self.T], (self.S, self.theta),
-                                               self.p_dropout)
         return self.output_layer.get_output_for(input, **kwargs)
 
     def get_output_shape_for(self, input_shape):
@@ -106,7 +106,7 @@ class LISTA(Layer, SparseAlgorithm):
     def __init__(self, incoming, dimension, params_init=(GlorotUniform(0.01),
                                                          GlorotUniform(0.01),
                                                          Normal(0.0005, mean=0.001)),
-                 p_dropout=0.5, transposed=False, **kwargs):
+                 addition_parameters=[False], **kwargs):
         '''
         init parameters
         :param incoming: input to the LISTA layer
@@ -128,8 +128,7 @@ class LISTA(Layer, SparseAlgorithm):
                                 lista=True, lista_weight_W=True, regularizable=True)
         self.theta = self.add_param(params_init[2], [self.dict_size,], name='theta',
                                     lista=True, lista_fun_param=True, regularizable=False)
-        self.p_dropout = p_dropout
-        self.transposed = transposed
+        self.transposed = addition_parameters[0]
 
     def get_dictionary_param(self):
         return self.W
@@ -149,6 +148,8 @@ class LISTA(Layer, SparseAlgorithm):
     def get_output_shape_for(self, input_shape):
         return [None, self.dict_size]
 
+
+# -----------------------------OLD FUNCTIONS - MAY NOT WORK NOW----------------------------------------------------------
 
 def SparseLinear(incoming, dimensions, params_init, LayerClass=SparseAlgorithm, p_drop=0.5, stack_index=None):
     '''
