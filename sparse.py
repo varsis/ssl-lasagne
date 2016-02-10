@@ -1,9 +1,9 @@
+import theano
+
 import theano.tensor as T
 from lasagne.init import GlorotUniform, Normal
 from lasagne.layers import Layer, DenseLayer, dropout
 from lasagne.nonlinearities import identity
-
-from utils import TransposedDenseLayer
 
 
 def shrinkage(x, theta):
@@ -23,16 +23,16 @@ class SparseAlgorithm:
 
 class ShrinkageLayer(Layer):
     def __init__(self, incoming, dict_size, params_init=(GlorotUniform(0.01),
-                                                         None,
-                                                         Normal(0.0005, mean=0.001)),
+                                                         Normal(0.0005, mean=0.001),
+                                                         None),
                  **kwargs):
         super(ShrinkageLayer, self).__init__(incoming, **kwargs)
         self.dict_size = dict_size
         self.S = self.add_param(params_init[0], [self.dict_size, self.dict_size], name='S',
                                 lista=True, lista_weight_W=True, regularizable=True)
-        self.B = params_init[1]
-        self.theta = self.add_param(params_init[2], [self.dict_size, ], name='theta',
+        self.theta = self.add_param(params_init[1], [self.dict_size, ], name='theta',
                                     lista=True, lista_fun_param=True, regularizable=False)
+        self.B = params_init[2]
 
     def get_output_for(self, input, **kwargs):
         eps = 1e-6
@@ -43,11 +43,11 @@ class ShrinkageLayer(Layer):
         return [None, self.dict_size]
 
 
-class LISTAWithDropout(Layer, SparseAlgorithm):
+class LISTAWithDropout(dropout, SparseAlgorithm):
     def __init__(self, incoming, dimension, params_init=(GlorotUniform(0.01),
                                                          GlorotUniform(0.01),
                                                          Normal(0.0005, mean=0.001)),
-                 addition_parameters=[False, None, None], **kwargs):
+                 addition_parameters=[False, None, None, True], **kwargs):
         '''
         init parameters
         :param incoming: input to the LISTA layer
@@ -68,23 +68,35 @@ class LISTAWithDropout(Layer, SparseAlgorithm):
         self.S = self.add_param(params_init[1], [self.dict_size, self.dict_size], name='S',
                                 lista=True, lista_weight_W=True, regularizable=True)
         self.theta = self.add_param(params_init[2], [self.dict_size, ], name='theta',
-                                    lista=True, lista_fun_param=True, regularizable=False)
+                                    lista=True, lista_fun_param=True, regularizable=True)
         self.transposed = addition_parameters[0]
         self.p_drop_input_to_shrinkage = addition_parameters[1]
         self.p_drop_shrinkage = addition_parameters[2]
-        self.input_to_shrinkage = (DenseLayer(incoming, num_units=self.dict_size, W=self.W, b=None,
-                                              nonlinearity=identity)
-                                   if not self.transposed else
-                                   TransposedDenseLayer(incoming, num_units=self.dict_size, W=self.W, b=None,
-                                                        nonlinearity=identity))
-        if self.p_drop_input_to_shrinkage is not None:
-            self.input_to_shrinkage = dropout(self.input_to_shrinkage, self.p_drop_input_to_shrinkage)
-        self.output_layer = self.input_to_shrinkage
-        for _ in range(self.T):
-            self.output_layer = ShrinkageLayer(self.output_layer, self.dict_size,
-                                               [self.S, self.input_to_shrinkage, self.theta])
-            if self.p_drop_shrinkage is not None and _ is not self.T - 1:
-                self.output_layer = dropout(self.output_layer, self.p_drop_shrinkage)
+        self.rescale = addition_parameters[3]
+
+    def dropout(self, input, p_drop, deterministic=False, **kwargs):
+        """
+        Parameters
+        ----------
+        input : tensor
+            output from the previous layer
+        deterministic : bool
+            If true dropout and scaling is disabled, see notes
+        """
+        if deterministic or p_drop == 0:
+            return input
+        else:
+            retain_prob = 1 - p_drop
+            if self.rescale:
+                input /= retain_prob
+
+            # use nonsymbolic shape for dropout mask if possible
+            input_shape = self.input_shape
+            if any(s is None for s in input_shape):
+                input_shape = input.shape
+
+            return input * self._srng.binomial(input_shape, p=retain_prob,
+                                               dtype=theano.config.floatX)
 
     def get_dictionary_param(self):
         return self.W
@@ -92,8 +104,18 @@ class LISTAWithDropout(Layer, SparseAlgorithm):
     def get_dictionary(self):
         return T.transpose(self.W) if not self.transposed else self.W
 
-    def get_output_for(self, input, **kwargs):
-        return self.output_layer.get_output_for(input, **kwargs)
+    def get_output_for(self, input, deterministic=False, **kwargs):
+        eps = 1e-6
+        input_to_shrinkage = T.dot(input, self.W if not self.transposed else self.W.transpose())
+        if self.p_drop_input_to_shrinkage is not None and self.T is not 0:
+            input_to_shrinkage = self.dropout(input_to_shrinkage, self.p_drop_input_to_shrinkage, deterministic,
+                                              **kwargs)
+        output = shrinkage(input_to_shrinkage, self.theta)
+        for _ in range(self.T):
+            output = shrinkage(T.dot(output, self.S) + input_to_shrinkage, self.theta + eps)
+            if self.p_drop_shrinkage is not None and _ is not self.T - 1:
+                output = self.dropout(output, self.p_drop_shrinkage, deterministic, **kwargs)
+        return output
 
     def get_output_shape_for(self, input_shape):
         return [None, self.dict_size]
@@ -127,7 +149,7 @@ class LISTA(Layer, SparseAlgorithm):
         self.S = self.add_param(params_init[1], [self.dict_size, self.dict_size], name='S',
                                 lista=True, lista_weight_W=True, regularizable=True)
         self.theta = self.add_param(params_init[2], [self.dict_size,], name='theta',
-                                    lista=True, lista_fun_param=True, regularizable=False)
+                                    lista=True, lista_fun_param=True, regularizable=True)
         self.transposed = addition_parameters[0]
 
     def get_dictionary_param(self):
@@ -138,8 +160,7 @@ class LISTA(Layer, SparseAlgorithm):
 
     def get_output_for(self, input, **kwargs):
         eps=1e-6
-        B = T.dot(input,
-                  self.W if not self.transposed else self.W.transpose())
+        B = T.dot(input, self.W if not self.transposed else self.W.transpose())
         output = shrinkage(B, self.theta + eps)
         for _ in range(self.T):
             output = shrinkage(T.dot(output, self.S) + B, self.theta + eps)
