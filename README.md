@@ -32,6 +32,7 @@ Example:
 dimensions is derived automatically
 
 2. Set learning ratio for loss components:
+
 3 components are loss for unsupervised/reconstruction path, loss for supervised/classification path and regularizer loss
 (i.e. total sum of weight matrices values) in respective order
 Example: lr = (1.0, 1, 1e-4)
