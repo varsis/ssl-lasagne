@@ -2,16 +2,19 @@
 
 INSTALL:
 
-> 1. INSTALL theano
+> 1. INSTALL cuda (https://developer.nvidia.com/cuda-downloads (better use run file (local))) and cudnn (https://developer.nvidia.com/cudnn, more info see https://groups.google.com/forum/#!msg/caffe-users/nlnMFI0Mh7M/8Y4z1VCcBr4J). Be careful when installing cuda it might break the system (i.e. can't get into login screen, use recovery mode to remove the driver come with cuda and it should work fine after). Better make backups before installing.
 
-> 2. INSTALL lasagne
+> 2. INSTALL theano: http://deeplearning.net/software/theano/install.html
 
-> 3. CLONE this git repository into a directory
+> 3. INSTALL lasagne: https://github.com/Lasagne/Lasagne (installation instructions in README.md)
 
-> 4. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into project directory
+> 4. CLONE this git repository into a directory
 
-> 5. OPEN and RUN semisupervised_lasagne.py
+> 5. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into project directory
 
+> 6. OPEN and RUN semisupervised_lasagne.py
+
+IN FILE SEMISUPERVISED_LASAGNE.PY:
 
 EDIT PARAMETERS:
 
