@@ -13,10 +13,8 @@ import params_io as io
 from build_cg import build_computation_graph
 from load import mnist
 
-MODE = 'TRAIN'  # MODE IS 'TRAIN' OR 'TEST'
 BEST_MODEL_PATH = 'models/best'
 LAST_MODEL_PATH = 'models/last'
-
 
 # -----------------------HELPER FUNCTIONS-------------------------------------------
 def iterate_minibatches(inputs, targets, labeled, batchsize, shuffle=False):
@@ -53,11 +51,12 @@ def run_test(test_function, testX, testY, prefix='test'):
     average_test_score = test_err / test_batches
     test_accuracy = test_acc / test_batches
     print("  " + prefix + " loss:\t\t{:.6f}".format(average_test_score))
-    print("  " + prefix + " accuracy:\t\t{:.6f} %".format(
+    print("  " + prefix + " accuracy:\t{:.6f} %".format(
         test_accuracy * 100))
     return average_test_score, test_accuracy
-#-----------------------PARAMETERS----------------------------#
 
+
+# -----------------------LOAD IMAGES AND LABELS----------------------------#
 print('Loading data')
 
 # Load index of labeled images in train set
@@ -68,13 +67,18 @@ labeled_idx = loaded_obj[1]
 
 # Load image and label of train, validation, test set
 trX, vlX, teX, trY, vlY, teY = mnist(onehot=True, ndim=2)
-
-print('Building computation graph')
-
-# Set the dimension here, 1 list = 1 stack, 2 list = 2 stacks, etc...
 IM_SIZE = trX.shape[1]
-dimensions = [[1500, 3, 100]]  # example of 1 stack
+
+#-----------------------SET PARAMETERS-------------------------#
+# Set the dimension here, 1 list = 1 stack, 2 list = 2 stacks, etc...
+dimensions = [[1500, 3, 200]]  # example of 1 stack
 #dimensions = [[1500,3,500],[1000,3,300]] # example of 2 stacks
+# Set learning ratio for unsupervised, supervised and weights regularization
+lr = (1.0, 1, 1e-4)
+
+# -----------------------CREATE RUN FUNCTIONS------------------#
+# Creating the computation graph
+print('Building computation graph')
 input_shape = [None, IM_SIZE]
 input_var = T.fmatrix('input_var')
 target_var = T.fmatrix('target_var')
@@ -96,9 +100,6 @@ params = utils.unique(params)
 regularization_params = layers.get_all_params(unsupervised_graph, regularizable=True) + \
          layers.get_all_params(supervised_graph, regularizable=True)
 regularization_params = utils.unique(regularization_params)
-
-# Set learning ratio for unsupervised, supervised and weights regularization
-lr = (1.0, 1, 1e-4)
 
 # Creating loss functions
 # Train loss has to take into account of labeled image or not
@@ -135,6 +136,8 @@ val_fn = theano.function([input_var, target_var, labeled_var],
                           test_acc], allow_input_downcast=True,
                          on_unused_input='ignore')
 
+# ----------------------------RUN-----------------------------------#
+MODE = input('"TEST" OR "TRAIN"?\n')
 if MODE == 'TEST':
     # load saved best model
     io.read_model_data([unsupervised_graph, supervised_graph], BEST_MODEL_PATH)
@@ -187,17 +190,17 @@ elif MODE == 'TRAIN':
         print("Epoch {} of {} took {:.3f}s".format(
             epoch + 1, num_epochs, time.time() - start_time))
         print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-        print("  training accuracy:\t\t{:.6f} %".format(
+        print("  training accuracy:\t{:.6f} %".format(
             train_acc / train_batches * 100))
 
         valid_err, valid_acc = run_test(val_fn, vlX, vlY, "validation")
         # save last model
-        io.write_model_data([unsupervised_graph, supervised_graph], best_validation_acc, LAST_MODEL_PATH)
+        io.write_model_data([unsupervised_graph, supervised_graph], [best_validation_acc], LAST_MODEL_PATH)
         # if best model is found, save best model
         if valid_acc > best_validation_acc:
-            best_validation_acc = valid_acc
-            io.write_model_data([unsupervised_graph, supervised_graph], best_validation_acc, BEST_MODEL_PATH)
             print('NEW BEST MODEL FOUND!')
+            best_validation_acc = valid_acc
+            io.write_model_data([unsupervised_graph, supervised_graph], [best_validation_acc], BEST_MODEL_PATH)
             run_test(val_fn, teX, teY, "test")
 
     # plot losses graph
