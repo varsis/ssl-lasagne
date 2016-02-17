@@ -2,11 +2,9 @@
 
 INSTALL:
 
-> 1. INSTALL cuda (https://developer.nvidia.com/cuda-downloads (better use run file (local))) and cudnn
- (https://developer.nvidia.com/cudnn, more info see https://groups.google.com/forum/#!msg/caffe-users/nlnMFI0Mh7M/8Y4z1VCcBr4J). Be careful when installing cuda it might break the system (i.e. can't get into login screen, use recovery mode to remove the driver come with cuda and it should work fine after). Better make backups before installing.
+> 1. INSTALL cuda (https://developer.nvidia.com/cuda-downloads (better use run file (local))) and cudnn (https://developer.nvidia.com/cudnn, more info see https://groups.google.com/forum/#!msg/caffe-users/nlnMFI0Mh7M/8Y4z1VCcBr4J). Be careful when installing cuda it might break the system (i.e. can't get into login screen, use recovery mode to remove the driver come with cuda and it should work fine after). Better make backups before installing.
 
-> 2. INSTALL theano: http://deeplearning.net/software/theano/install.html (open ~/.bashrc and change theano to use GPU
-device by setting "device = gpu0" or "device = gpu1")
+> 2. INSTALL theano: http://deeplearning.net/software/theano/install.html
 
 > 3. INSTALL lasagne: https://github.com/Lasagne/Lasagne (installation instructions in README.md)
 
