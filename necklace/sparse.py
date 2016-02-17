@@ -1,7 +1,7 @@
 import theano
 import theano.tensor as T
 from lasagne.init import GlorotUniform, Normal, Uniform
-from lasagne.layers import Layer, dropout
+from lasagne.layers import Layer, DropoutLayer
 
 
 def shrinkage(x, theta):
@@ -41,7 +41,7 @@ class ShrinkageLayer(Layer):
         return (None, self.dict_size)
 
 
-class LISTAWithDropout(dropout, SparseAlgorithm):
+class LISTAWithDropout(DropoutLayer, SparseAlgorithm):
     def __init__(self, incoming, dimension, params_init=(GlorotUniform(),
                                                          GlorotUniform(),
                                                          Uniform([0, 0.1])),

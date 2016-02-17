@@ -32,9 +32,11 @@ Follow the promts to download mnist.pkl, and install the requirements using pip
 
 > 3. CLONE this git repository into a directory
 
-> 4. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into project directory
+> 4. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into "data" folder
 
-> 5. OPEN and RUN semisupervised_lasagne.py
+> 5. CREATE a folder named "models" in project folder
+
+> 6. OPEN and RUN semisupervised_lasagne.py
 
 ### Parameters for Semisupervised Learning
 
