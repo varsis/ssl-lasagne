@@ -8,10 +8,6 @@ import numpy as np
 import theano
 from lasagne import updates, layers, objectives, regularization, utils
 
-# Add Enviorment Variables for GPU/Optimizations
-import os
-os.environ["THEANO_FLAGS"] = "device=gpu0"
-
 from theano import tensor as T
 
 import params_io as io
