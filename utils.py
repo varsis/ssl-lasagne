@@ -1,13 +1,12 @@
 import numpy as np
 import theano.tensor as T
-from lasagne.init import GlorotUniform, Constant, Normal
-from lasagne.layers import Layer, dropout, DenseLayer, MergeLayer, get_all_layers
+from lasagne.init import GlorotUniform, Constant, Uniform
+from lasagne.layers import Layer, dropout, DenseLayer, MergeLayer
 from lasagne.nonlinearities import identity, rectify, softmax
 
 
 class TransposedDenseLayer(Layer):
-
-    def __init__(self, incoming, num_units, W=GlorotUniform(),
+    def __init__(self, incoming, num_units, W=GlorotUniform(0.01),
                  b=Constant(0.), nonlinearity=rectify,
                  **kwargs):
         super(TransposedDenseLayer, self).__init__(incoming, **kwargs)
@@ -55,7 +54,8 @@ class LinearCombinationLayer(MergeLayer):
         return output
 
 
-def NecklaceNetwork(incoming, dimensions, LayerClass, necklace_link=False, p_weight=0.5, alpha=0.5):
+def NecklaceNetwork(incoming, dimensions, LayerClass, tied_weight=False, necklace_link=False, batch_normalization=False,
+                    p_weight=0.5, alpha=0.5):
     '''
     Implementation of a necklace network. See: https://drive.google.com/file/d/0B8EOfHp2L5mNbkY1UkhlWmF2YWc/view?ts=56b3a4fc
     :param dimensions: contain information of the dimension
@@ -69,6 +69,8 @@ def NecklaceNetwork(incoming, dimensions, LayerClass, necklace_link=False, p_wei
     num_of_stacks = len(dimensions)
     D_list = []
     G_list = []
+    sparse_layers = []
+    feature_layers = []
     stack_idx=0
     for _ in range(num_of_stacks):
         stack_str = str(stack_idx)
@@ -76,31 +78,41 @@ def NecklaceNetwork(incoming, dimensions, LayerClass, necklace_link=False, p_wei
         sparse_dimensions = dimensions[_][0:2]
         output_size = dimensions[_][2]
         params_init=[GlorotUniform(0.01),
-             GlorotUniform(0.01),
-             Normal(0.0005, mean=0.001)]
+                     GlorotUniform(0.01),
+                     Uniform([0, 0.01])]
         network = LayerClass(network, sparse_dimensions, params_init, [False, 0.5, 0.5, True],
                              name='LISTA_' + stack_str)
         D_list.append(network.get_dictionary_param())
         network = dropout(network, p_weight, name='LISTA_DROP_' + stack_str)
+        sparse_layers.append(network)
         network = DenseLayer(network, num_units=output_size, b=None, nonlinearity=identity, name='PROJ_' + stack_str)
         G_list.append(network.W)
         network = dropout(network, p=p_weight, name='PROJ_DROP_' + stack_str)
+        feature_layers.append(network)
     feature = network
     classification_branch = dropout(DenseLayer(feature, 10, nonlinearity=softmax), p_weight)
     for _ in reversed(range(num_of_stacks)):
         stack_str = str(stack_idx)
         stack_idx += 1
         sparse_dimensions = [dimensions[_][0], dimensions[_][1]]
-        output_size = num_input if _ == 0 else dimensions[_-1][0]
-        params_init = [G_list[_],
+        output_size = num_input if _ == 0 else dimensions[_ - 1][2]
+        params_init = [G_list[_] if tied_weight else GlorotUniform(0.01),
                        GlorotUniform(0.01),
-                       Normal(0.0005, mean=0.001)]
-        network = LayerClass(network, sparse_dimensions, params_init, [True, 0.5, 0.5, True], name='LISTA_' + stack_str)
+                       Uniform([0, 0.01])]
+        # make link from encoding feature layer to decoding sparse layer. in case of the inner most feature layer,
+        # feature_layer[_] and network are both the inner most layer
+        if necklace_link:
+            network = LinearCombinationLayer([feature_layers[_], network], 0.5)
+        network = LayerClass(network, sparse_dimensions, params_init, [tied_weight, 0.5, 0.5, True],
+                             name='LISTA_' + stack_str)
         network = dropout(network, p_weight, name='LISTA_DROP_' + stack_str)
-        if necklace_link and _ == 0:
-            sparse_code = get_all_layers(network)[3]
-            network = LinearCombinationLayer([sparse_code, network], 0.5)
-        network = TransposedDenseLayer(network, num_units=output_size, W=D_list[_], b=None, nonlinearity=identity,
-                                       name='PROJ_' + stack_str)
+        if necklace_link:
+            network = LinearCombinationLayer([sparse_layers[_], network], 0.5)
+        if tied_weight:
+            network = TransposedDenseLayer(network, num_units=output_size, W=D_list[_], b=None, nonlinearity=identity,
+                                           name='PROJ_' + stack_str)
+        else:
+            network = DenseLayer(network, num_units=output_size, W=GlorotUniform(0.01), b=None, nonlinearity=identity,
+                                 name='PROJ_' + stack_str)
         network = dropout(network, p=p_weight, name='PROJ_DROP_' + stack_str)
     return network, classification_branch, feature

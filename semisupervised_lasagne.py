@@ -71,10 +71,10 @@ IM_SIZE = trX.shape[1]
 
 #-----------------------SET PARAMETERS-------------------------#
 # Set the dimension here, 1 list = 1 stack, 2 list = 2 stacks, etc...
-dimensions = [[1500, 3, 200]]  # example of 1 stack
-#dimensions = [[1500,3,500],[1000,3,300]] # example of 2 stacks
+# dimensions = [[1500, 3, 200]]  # example of 1 stack
+dimensions = [[1500, 3, 500], [1000, 3, 200]]  # example of 3 stacks
 # Set learning ratio for unsupervised, supervised and weights regularization
-lr = (1.0, 1, 1e-4)
+lr = (1.0, 1.0, 0)
 
 # -----------------------CREATE RUN FUNCTIONS------------------#
 # Creating the computation graph
@@ -117,7 +117,9 @@ test_loss = lr[0]*test_loss1.mean() +\
             lr[2]*l2_penalties.mean()
 
 # Update function to train
-updates_function = updates.adam(loss, params, 0.00001)
+# sgd_lr = theano.shared(utils.floatX(0.001))
+# sgd_lr_decay = utils.floatX(0.9)
+updates_function = updates.adam(loss, params, 0.0001)
 
 # Compile train function
 train_fn = theano.function([input_var, target_var, labeled_var], loss, updates=updates_function,
@@ -144,9 +146,10 @@ if MODE == 'TEST':
     run_test(val_fn, teX, teY)
 elif MODE == 'TRAIN':
     # if last model exists, load last model:
+    best_validation_acc = 0
     if os.path.isfile(LAST_MODEL_PATH + '.' + io.PARAM_EXTENSION):
         choice = input(
-            'PREVIOUS MODEL FOUND, CONTINUING TRAINING OR OVERRIDE OR END TRAINING? (ANSWER: "CONTINUE", "OVERRIDE", "END")\n')
+            'PREVIOUS MODEL FOUND, CONTINUE TRAINING OR OVERRIDE OR END? (ANSWER: "CONTINUE", "OVERRIDE", "END")\n')
         if choice == 'CONTINUE':
             best_validation_acc = io.read_model_data([unsupervised_graph, supervised_graph], BEST_MODEL_PATH)
         elif choice == 'OVERRIDE':
@@ -161,6 +164,8 @@ elif MODE == 'TRAIN':
     train_loss2 = []
     train_regularize = []
     for epoch in range(num_epochs):
+        # if epoch % 1000 == 0:
+        #     sgd_lr *= sgd_lr_decay
         start_time = time.time()
         for batch in iterate_minibatches(trX, trY, labeled_idx, 500, shuffle=True):
             inputs, targets, labeled = batch
@@ -194,8 +199,9 @@ elif MODE == 'TRAIN':
             train_acc / train_batches * 100))
 
         valid_err, valid_acc = run_test(val_fn, vlX, vlY, "validation")
-        # save last model
-        io.write_model_data([unsupervised_graph, supervised_graph], [best_validation_acc], LAST_MODEL_PATH)
+        # save backup model every 10 epochs
+        if epoch % 10 == 0:
+            io.write_model_data([unsupervised_graph, supervised_graph], [best_validation_acc], LAST_MODEL_PATH)
         # if best model is found, save best model
         if valid_acc > best_validation_acc:
             print('NEW BEST MODEL FOUND!')
