@@ -3,17 +3,19 @@
 import os, urllib, gzip
 from subprocess import call
 
-# Current Path of the file
+# Current Path of the file and data folder
+dataPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'data')
 path = os.path.dirname(os.path.realpath(__file__))
 
-# Make sure we are executing where this script resides
-os.chdir(path)
-
 # Get files, want to check if we have mnist data base
-files = os.listdir(path)
+files = os.listdir(dataPath)
 
 # Download and unzip file
 if 'mnist.pkl' not in files:
+    print "Downloading MNIST"
+
+    # Inside Data folder
+    os.chdir(dataPath)
     mnist = urllib.URLopener()
     mnist.retrieve("http://deeplearning.net/data/mnist/mnist.pkl.gz", "mnist.pkl.gz")
     call(['gunzip','mnist.pkl.gz'])
@@ -28,6 +30,9 @@ def getInput():
             return True
         elif answer == 'n' or answer == 'no':
             return False
+
+# In root path now
+os.chdir(path)
 
 print "(EXPERIMENTAL) Do you want to setup a virtual enviroment? (y/n) "
 useenv = getInput()

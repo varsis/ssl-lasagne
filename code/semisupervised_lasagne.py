@@ -13,8 +13,8 @@ import params_io as io
 from build_cg import build_computation_graph
 from load import mnist
 
-BEST_MODEL_PATH = 'models/best'
-LAST_MODEL_PATH = 'models/last'
+# File to keep where the each file should be stored
+from path_settings import BEST_MODEL_PATH, LAST_MODEL_PATH, DATA_PATH
 
 # -----------------------HELPER FUNCTIONS-------------------------------------------
 def iterate_minibatches(inputs, targets, labeled, batchsize, shuffle=False):
@@ -60,7 +60,7 @@ def run_test(test_function, testX, testY, prefix='test'):
 print('Loading data')
 
 # Load index of labeled images in train set
-with open('labeled_index.pkl', 'r') as f:
+with open(os.path.join(DATA_PATH,'labeled_index.pkl'), 'r') as f:
     loaded_obj = pickle.load(f)
 VALIDATION_SIZE = loaded_obj[0]
 labeled_idx = loaded_obj[1]

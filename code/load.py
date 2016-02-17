@@ -2,6 +2,11 @@ import cPickle as pickle
 
 import numpy as np
 
+import os
+
+# File to keep where the each file should be stored
+from path_settings import DATA_PATH
+
 
 def one_hot(x,n):
 	if type(x) == list:
@@ -12,7 +17,7 @@ def one_hot(x,n):
 	return o_h
 
 def mnist(ntrain=50000, nvalid=10000, ntest=10000,onehot=True, ndim=2):
-	f = open('mnist.pkl')
+	f = open(os.path.join(DATA_PATH,'mnist.pkl'))
 	loaded_objs = pickle.load(f)
 	trX = np.asarray(loaded_objs[0][0])
 	trY = np.asarray(loaded_objs[0][1])
