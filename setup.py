@@ -34,7 +34,7 @@ def getInput():
 # In root path now
 os.chdir(path)
 
-print "(EXPERIMENTAL) Do you want to setup a virtual enviroment? (y/n) "
+print "Do you want to setup a virtual enviroment? (y/n) "
 useenv = getInput()
 
 # Put env in env
@@ -44,17 +44,18 @@ if useenv:
     environment = os.environ.copy()
     environment['PATH'] = os.pathsep.join([os.path.join(path,"env/bin"), environment['PATH']])
     call(['pip','install','-r','requirements.txt'],env=environment)
-
+    print
     print "To enter the virtual enviroment use: 'source env/bin/activate'"
 
 else:
     # Install in user folder
+    print
     print "Do you want to install the requirments globally? Otherwise at user level (y/n)"
     if getInput():
         call(['pip','install','-r','requirements.txt'])
     else:
         call(['pip','install','--user','-r','requirements.txt'])
-
+print
 print "Installation complete!"
 print "To use GPU with Theano use 'THEANO_FLAGS='device=gpu0' python semisupervised_lasagne.py'"
 print "OR see Theano documentation for using .theanorc"
