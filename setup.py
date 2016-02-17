@@ -18,31 +18,37 @@ if 'mnist.pkl' not in files:
     mnist.retrieve("http://deeplearning.net/data/mnist/mnist.pkl.gz", "mnist.pkl.gz")
     call(['gunzip','mnist.pkl.gz'])
 
-print "Do you want to setup a virtual enviroment? (y/n)"
-invalid = True
-useenv = False
-while invalid:
-    answer = raw_input()
-    answer.lower()
+def getInput():
+    while True:
+        answer = raw_input()
+        answer.lower()
 
-    if answer == 'y' or answer == 'yes':
-        # Setup env
-        invalid = False
-        useenv = True
-    elif answer == 'n' or answer == 'no':
-        invalid = False
+        if answer == 'y' or answer == 'yes':
+            # Setup env
+            return True
+        elif answer == 'n' or answer == 'no':
+            return False
+
+print "(EXPERIMENTAL) Do you want to setup a virtual enviroment? (y/n) "
+useenv = getInput()
 
 # Put env in env
 if useenv:
     call(['virtualenv','env'])
     call(['source','env/bin/activate'])
+    # Next Install requirments for package
+    call(['pip','install','-r','requirements.txt'])
 
-# Next Install requirments for package
-call(['pip','install','-r','requirements.txt'])
+    print "To enter the virtual enviroment next time use: 'source env/bin/activate'"
 
-print "To enter the virtual enviroment next time use: 'source env/bin/activate'"
+else:
+    # Install in user folder
+    print "Do you want to install the requirments globally? Otherwise at user level (y/n)"
+    if getInput():
+        call(['pip','install','-r','requirements.txt'])
+    else:
+        call(['pip','install','--user','-r','requirements.txt'])
 
-
-
-
-
+print "Installation complete!"
+print "To use GPU with Theano use 'THEANO_FLAGS='device=gpu0' python semisupervised_lasagne.py'"
+print "OR see Theano documentation for using .theanorc"

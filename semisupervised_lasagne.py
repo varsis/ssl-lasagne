@@ -7,6 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import theano
 from lasagne import updates, layers, objectives, regularization, utils
+
+# Add Enviorment Variables for GPU/Optimizations
+import os
+os.environ["THEANO_FLAGS"] = "device=gpu0"
+
 from theano import tensor as T
 
 import params_io as io
@@ -17,6 +22,31 @@ BEST_MODEL_PATH = 'models/best'
 LAST_MODEL_PATH = 'models/last'
 
 # -----------------------HELPER FUNCTIONS-------------------------------------------
+
+def getInput(parameters):
+
+    string = ""
+
+    #convert to lower case
+
+    for index in range(len(parameters)):
+        if index == len(parameters) - 1:
+            string += "'" + parameters[index] + "'"
+        else:
+            string += "'" + parameters[index] + "'" + ' OR '
+
+    parameters = [p.lower() for p in parameters]
+
+    print "Select a option: " + string
+    # Wait for valid input
+    while True:
+        answer = raw_input()
+        answer.lower()
+
+        if answer in parameters:
+            return answer.upper()
+
+
 def iterate_minibatches(inputs, targets, labeled, batchsize, shuffle=False):
     # this function create mini batches for train/validation/test
     assert len(inputs) == len(targets)
@@ -70,11 +100,14 @@ trX, vlX, teX, trY, vlY, teY = mnist(onehot=True, ndim=2)
 IM_SIZE = trX.shape[1]
 
 #-----------------------SET PARAMETERS-------------------------#
+
+from parameters import dimensions, lr
+
 # Set the dimension here, 1 list = 1 stack, 2 list = 2 stacks, etc...
-dimensions = [[1500, 3, 200]]  # example of 1 stack
+#dimensions = [[1500, 3, 200]]  # example of 1 stack
 #dimensions = [[1500,3,500],[1000,3,300]] # example of 2 stacks
 # Set learning ratio for unsupervised, supervised and weights regularization
-lr = (1.0, 1, 1e-4)
+#lr = (1.0, 1, 1e-4)
 
 # -----------------------CREATE RUN FUNCTIONS------------------#
 # Creating the computation graph
@@ -137,7 +170,7 @@ val_fn = theano.function([input_var, target_var, labeled_var],
                          on_unused_input='ignore')
 
 # ----------------------------RUN-----------------------------------#
-MODE = input('"TEST" OR "TRAIN"?\n')
+MODE = getInput(['TEST','TRAIN'])
 if MODE == 'TEST':
     # load saved best model
     io.read_model_data([unsupervised_graph, supervised_graph], BEST_MODEL_PATH)
