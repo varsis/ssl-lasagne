@@ -54,14 +54,6 @@ class LinearCombinationLayer(MergeLayer):
         return output
 
 
-def dropout_fun(incoming, **kwargs):
-    return DropoutLayer(incoming, **kwargs)
-
-
-def nochange(incoming, **kwargs):
-    return incoming
-
-
 def NecklaceNetwork(incoming, dimensions, LayerClass, tied_weight=False, necklace_link=False, residual_link=False,
                     batch_normalization=False, p_weight=0.5, alpha=0.5):
     '''
@@ -72,11 +64,6 @@ def NecklaceNetwork(incoming, dimensions, LayerClass, tied_weight=False, necklac
     :param alpha: alpha factor in x' = alpha*a + (1-alpha)*a'
     :return:
     '''
-    if p_weight == 0:
-        dropout = dropout_fun
-    else:
-        dropout = nochange
-
     network = incoming
     num_input = incoming.output_shape[1]
     num_of_stacks = len(dimensions)
