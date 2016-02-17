@@ -22,7 +22,7 @@ $ cd ssl-lasagne
 ```sh
 $ python setup.py
 ```
-Follow the promts to download mnist.pkl, and install the requirements using pip
+Follow the prompts to download mnist.pkl, and install the requirements using pip
 
 ### Manual Installation
 
