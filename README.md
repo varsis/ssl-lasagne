@@ -11,6 +11,7 @@
 * [cuda] - (better use run file (local))
 * [cuDNN] - (more info see https://groups.google.com/forum/#!msg/caffe-users/nlnMFI0Mh7M/8Y4z1VCcBr4J). Be careful when installing cuda it might break the system (i.e. can't get into login screen, use recovery mode to remove the driver come with cuda and it should work fine after). Better make backups before installing.
 * Check out [cuDNN Install] for enviroment variables.
+
 ### Automated Installation:
 ```sh 
 $ git clone https://github.com/minhnhat93/ssl-lasagne.git ssl-lasagne
