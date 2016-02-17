@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os, urllib, gzip
-from subprocess import call
+from subprocess import call, check_call, Popen
 
 # Current Path of the file and data folder
 dataPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'data')
@@ -39,12 +39,13 @@ useenv = getInput()
 
 # Put env in env
 if useenv:
-    call(['virtualenv','env'])
-    call(['source','env/bin/activate'])
+    check_call(['virtualenv','--system-site-packages','env'])
     # Next Install requirments for package
-    call(['pip','install','-r','requirements.txt'])
+    environment = os.environ.copy()
+    environment['PATH'] = os.pathsep.join([os.path.join(path,"env/bin"), environment['PATH']])
+    call(['pip','install','-r','requirements.txt'],env=environment)
 
-    print "To enter the virtual enviroment next time use: 'source env/bin/activate'"
+    print "To enter the virtual enviroment use: 'source env/bin/activate'"
 
 else:
     # Install in user folder
