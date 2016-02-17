@@ -81,7 +81,7 @@ def NecklaceNetwork(incoming, dimensions, LayerClass, tied_weight=False, necklac
         params_init = [GlorotUniform(0.01),
                        GlorotUniform(0.01),
                        Uniform([0, 0.01])]
-        network = LayerClass(network, sparse_dimensions, params_init, [False, 0.5, 0.5, True],
+        network = LayerClass(network, sparse_dimensions, params_init, [False, None, None, True],
                              name='LISTA_' + stack_str)
         D_list.append(network.get_dictionary_param())
         network = DropoutLayer(network, p=p_weight, name='LISTA_DROP_' + stack_str)
@@ -110,7 +110,7 @@ def NecklaceNetwork(incoming, dimensions, LayerClass, tied_weight=False, necklac
         # feature_layer[_] and network are both the inner most layer
         if necklace_link:
             network = LinearCombinationLayer([feature_layers[_], network], [0.5, 0.5])
-        network = LayerClass(network, sparse_dimensions, params_init, [tied_weight, 0.5, 0.5, True],
+        network = LayerClass(network, sparse_dimensions, params_init, [tied_weight, None, None, True],
                              name='LISTA_' + stack_str)
         network = DropoutLayer(network, p=p_weight, name='LISTA_DROP_' + stack_str)
         if necklace_link:

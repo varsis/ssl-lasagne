@@ -40,7 +40,7 @@ Follow the promts to download mnist.pkl, and install the requirements using pip
 
 ### Parameters for Semisupervised Learning
 
-Set the paramters in ` parameters.py `
+Set the main paramters in ` semisupervised_lasagne.py ` (search for "SET PARAMETERS")
 ```
 #-----------------------SET PARAMETERS-------------------------#
 # Set the dimension here, 1 list = 1 stack, 2 list = 2 stacks, etc...
@@ -64,6 +64,18 @@ dimensions is derived automatically
 1. components are loss for unsupervised/reconstruction path, loss for supervised/classification path and regularizer loss
 (i.e. total sum of weight matrices values) in respective order
 Example: ```lr = (1.0, 1, 1e-4)```
+
+### Set other parameters:
+1. Set tied_weight, necklace_link, residual_link:
+These parameters lies in the function call NecklaceNetwork of the file "necklace/build_cg.py". You can open the file and change the
+parameters accordingly. For more information on NecklaceNetwork see the file "necklace/otherlayers.py"
+
+2. Set dropout percentage:
+Dropout percentage for input and weights can be changed in the function call to build_computation_graph in the file
+"necklace/build_cg.py"
+
+3. Set dropout percentage for LISTA layer:
+Currently dropout for LISTA is disabled. Send me an email if you want to change that (quick, they're already there)
 
 ### Running the Program
 
