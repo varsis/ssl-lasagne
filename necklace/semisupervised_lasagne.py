@@ -42,7 +42,8 @@ def run_test(test_function, testX, testY, prefix='test'):
     test_batches = 0
     for batch in iterate_minibatches(testX, testY,
                                      np.zeros((testY.shape[0], 1)),
-                                     500, shuffle=False):
+                                     500,
+                                     shuffle=False):
         inputs, targets, labeled = batch
         err, _, _, _, acc = test_function(inputs, targets, labeled)
         test_err += err
