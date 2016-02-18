@@ -33,17 +33,17 @@ Follow the prompts to download mnist.pkl, and install the requirements using pip
 
 ### Manual Installation
 
-1. INSTALL theano "bleeding-edge" version: http://deeplearning.net/software/theano/install.html
+1. INSTALL theano version 0.7.1a1: sudo pip install --upgrade git+git://github.com/Theano/Theano.git@rel-0.7.1a1
 
-2. INSTALL lasagne: https://github.com/Lasagne/Lasagne (installation instructions in README.md)
+2. INSTALL lasagne newest version: https://github.com/Lasagne/Lasagne (installation instructions in README.md)
 
 3. CLONE this git repository into a directory
 
-> 4. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into "data" folder
+4. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into "data" folder
 
-> 5. CREATE a folder named "models" in project folder
+5. CREATE a folder named "models" in project folder
 
-> 6. OPEN and RUN semisupervised_lasagne.py
+6. OPEN and RUN semisupervised_lasagne.py
 
 ### Path Options
 * See `necklace/path_settings.py` for specifying your own paths
