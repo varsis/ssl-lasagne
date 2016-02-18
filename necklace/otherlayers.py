@@ -1,7 +1,7 @@
 import numpy as np
 import theano.tensor as T
 from lasagne.init import GlorotUniform, Constant, Uniform
-from lasagne.layers import Layer, DropoutLayer, DenseLayer, MergeLayer
+from lasagne.layers import BatchNormLayer, Layer, DropoutLayer, DenseLayer, MergeLayer
 from lasagne.nonlinearities import identity, rectify, softmax
 
 
