@@ -6,37 +6,47 @@
 
 ### Optional Installs (GPU Support):
 [cuda]: <https://developer.nvidia.com/cuda-downloads>
-[cudNN]: <https://developer.nvidia.com/cudnn>
+[cuDNN]: <https://developer.nvidia.com/cudnn>
+[cuDNN Install]:<http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html>
 * [cuda] - (better use run file (local))
 * [cuDNN] - (more info see https://groups.google.com/forum/#!msg/caffe-users/nlnMFI0Mh7M/8Y4z1VCcBr4J). Be careful when installing cuda it might break the system (i.e. can't get into login screen, use recovery mode to remove the driver come with cuda and it should work fine after). Better make backups before installing.
+* Check out [cuDNN Install] for enviroment variables.
 
 ### Automated Installation:
 ```sh 
 $ git clone https://github.com/minhnhat93/ssl-lasagne.git ssl-lasagne
 $ cd ssl-lasagne
 ```
+
+[Matplotlib Virtualenv FAQ]: <http://matplotlib.org/faq/virtualenv_faq.html>
+
 > Using a virtual enviroment may not work, use with caution!
+
+> You may need to visit [Matplotlib Virtualenv FAQ] to get virtualenv working correctly
 
 > setup.py uses 'pip' if you do not have this installed, check requirements.txt for the required packages.
 
 ```sh
 $ python setup.py
 ```
-Follow the promts to download mnist.pkl, and install the requirements using pip
+Follow the prompts to download mnist.pkl, and install the requirements using pip
 
 ### Manual Installation
 
-> 1. INSTALL theano "bleeding-edge" version: http://deeplearning.net/software/theano/install.html
+1. INSTALL theano "bleeding-edge" version: http://deeplearning.net/software/theano/install.html
 
-> 2. INSTALL lasagne: https://github.com/Lasagne/Lasagne (installation instructions in README.md)
+2. INSTALL lasagne: https://github.com/Lasagne/Lasagne (installation instructions in README.md)
 
-> 3. CLONE this git repository into a directory
+3. CLONE this git repository into a directory
 
 > 4. DOWNLOAD mnist.pk.gz (http://deeplearning.net/data/mnist/mnist.pkl.gz) and unpack mnist.pkl into "data" folder
 
 > 5. CREATE a folder named "models" in project folder
 
 > 6. OPEN and RUN semisupervised_lasagne.py
+
+### Path Options
+* See `necklace/path_settings.py` for specifying your own paths
 
 ### Parameters for Semisupervised Learning
 
@@ -79,13 +89,15 @@ Currently dropout for LISTA is disabled. Send me an email if you want to change 
 
 ### Running the Program
 
-> You may wish to use the GPU, either setup .theanorc or use the alternate command
+[.theanorc]: <http://deeplearning.net/software/theano/library/config.html#envvar-THEANORC>
+
+> You may wish to use the GPU, either setup [.theanorc] or use the alternate command
 
 ```sh
 $ python semisupervised_lasagne.py
 ```
 
-Alternate command (Your gpu device number may vary):
+Alternate command (Your gpu device number may vary and you may also need additional flags):
 ```sh
 $ THEANO_FLAGS='device=gpu0' python semisupervised_lasagne.py
 ```
@@ -95,5 +107,6 @@ $ THEANO_FLAGS='device=gpu0' python semisupervised_lasagne.py
 * IF `"TRAIN"` IS CHOSEN AND THERE IS A PREVIOUS MODEL FILE FROM LAST RUN (check variable LAST_MODEL_PATH): 
 3 options: "CONTINUE" (train using last model as init value for parameters), "OVERRIDE" (train completely new model),
 "END" (quit)
+
 
 
